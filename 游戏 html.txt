@@ -1,0 +1,443 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>English Vocabulary Match Game</title>
+    <style>
+        :root {
+            --primary: #FFB347;
+            --secondary: #FFCC80;
+            --bg: #F0F8FF;
+            --text: #5D4037;
+            --card-bg: #FFFFFF;
+            --success: #81C784;
+        }
+
+        body {
+            font-family: 'Comic Sans MS', 'Varela Round', sans-serif;
+            background-color: var(--bg);
+            color: var(--text);
+            margin: 0;
+            padding: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            min-height: 100vh;
+            text-align: center;
+            overflow-x: hidden;
+        }
+
+        /* UI Containers */
+        #home-screen, #game-screen, #end-screen {
+            display: none;
+            width: 100%;
+            max-width: 600px;
+            padding: 20px;
+            box-sizing: border-box;
+            animation: fadeIn 0.5s ease-in-out;
+        }
+
+        .active { display: block !important; }
+
+        /* Mascot */
+        .mascot {
+            font-size: 80px;
+            margin: 10px;
+            animation: bounce 2s infinite;
+        }
+        
+        .mascot-dialogue {
+            background: #fff;
+            border: 4px solid var(--primary);
+            border-radius: 20px;
+            padding: 10px 20px;
+            display: inline-block;
+            font-weight: bold;
+            margin-bottom: 20px;
+            position: relative;
+        }
+
+        /* Buttons */
+        button {
+            background-color: var(--primary);
+            color: white;
+            border: none;
+            border-radius: 30px;
+            padding: 15px 30px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 5px 0 #E65100;
+            transition: transform 0.1s, box-shadow 0.1s;
+            margin: 10px;
+            font-family: inherit;
+        }
+
+        button:active {
+            transform: translateY(5px);
+            box-shadow: 0 0 0 #E65100;
+        }
+
+        /* Header Info */
+        .game-header {
+            display: flex;
+            justify-content: space-between;
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.05);
+            margin-bottom: 20px;
+            font-size: 18px;
+            font-weight: bold;
+        }
+
+        /* Grid */
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin: 0 auto;
+        }
+
+        /* Cards */
+        .card {
+            background-color: var(--secondary);
+            aspect-ratio: 1;
+            border-radius: 15px;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            box-shadow: 0 4px 0 #D7CCC8;
+            transition: all 0.3s;
+            user-select: none;
+        }
+
+        .card.flipped {
+            background-color: var(--card-bg);
+            box-shadow: 0 2px 0 #ccc;
+            transform: scale(0.95);
+        }
+
+        .card.matched {
+            background-color: var(--success);
+            color: white;
+            opacity: 0;
+            visibility: hidden;
+            transition: opacity 0.5s, visibility 0.5s;
+        }
+
+        .card-emoji { font-size: 30px; margin-bottom: 5px; display: none; }
+        .card-word { display: none; }
+        
+        .card.flipped .card-emoji, 
+        .card.flipped .card-word { display: block; }
+
+        /* Floating Feedback */
+        #feedback {
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 40px;
+            font-weight: bold;
+            color: #FF4081;
+            text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff;
+            pointer-events: none;
+            opacity: 0;
+            z-index: 100;
+        }
+
+        .show-feedback { animation: popOut 1.5s forwards; }
+
+        /* Animations */
+        @keyframes bounce {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-10px); }
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes popOut {
+            0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+            20% { opacity: 1; transform: translate(-50%, -50%) scale(1.2); }
+            80% { opacity: 1; transform: translate(-50%, -70%) scale(1); }
+            100% { opacity: 0; transform: translate(-50%, -100%) scale(0.8); }
+        }
+
+        /* Responsive */
+        @media (max-width: 480px) {
+            .grid { grid-template-columns: repeat(3, 1fr); }
+            .card-emoji { font-size: 24px; }
+            .card { font-size: 14px; }
+        }
+    </style>
+</head>
+<body>
+
+    <div id="home-screen" class="active">
+        <div class="mascot">🦌</div>
+        <div class="mascot-dialogue">Hi! Let's learn English together!</div>
+        <h1>Vocabulary Match Game</h1>
+        <p>适合 Year 1 - Year 4 的消消乐挑战</p>
+        
+        <div style="margin: 20px 0;">
+            <label for="theme-select"><strong>Choose Topic: </strong></label>
+            <select id="theme-select" style="padding: 10px; border-radius: 10px; font-size: 16px;">
+                <option value="school">🎒 School (学校)</option>
+                <option value="food">🍎 Food (食物)</option>
+                <option value="body">🖐️ Body Parts (身体部位)</option>
+            </select>
+        </div>
+        
+        <button onclick="startGame()">▶️ Start Game</button>
+    </div>
+
+    <div id="game-screen">
+        <div class="game-header">
+            <div>⭐ Score: <span id="score">0</span></div>
+            <div>🔥 Combo: <span id="combo">0</span></div>
+            <div>⏱️ Time: <span id="timer">00:00</span></div>
+        </div>
+        
+        <div class="mascot" style="font-size: 40px; margin: 0;">🦌</div>
+        <div id="teaching-board" style="min-height: 25px; margin-bottom: 15px; color: #E65100; font-weight: bold;">
+            点击卡片配对哦！
+        </div>
+
+        <div class="grid" id="game-grid"></div>
+        <button onclick="goHome()" style="background: #9E9E9E; font-size: 16px; padding: 10px 20px;">🏠 Quit</button>
+    </div>
+
+    <div id="end-screen">
+        <div class="mascot">🦌</div>
+        <h1 style="color: #4CAF50;">Awesome Job!</h1>
+        <div style="background: white; padding: 20px; border-radius: 20px; margin-bottom: 20px;">
+            <h2>Your Score: <span id="final-score" style="color: #E65100;">0</span></h2>
+            <p>🏆 恭喜你完成了挑战！</p>
+            <h3>学会的新单词：</h3>
+            <ul id="learned-words" style="text-align: left; list-style-type: none; padding: 0;"></ul>
+        </div>
+        <button onclick="startGame()">🔄 Play Again</button>
+        <button onclick="goHome()" style="background: #2196F3;">🏠 Home</button>
+    </div>
+
+    <div id="feedback"></div>
+
+    <script>
+        // 词汇库
+        const vocabulary = {
+            school: [
+                { en: "Pencil", zh: "铅笔", emoji: "✏️", sentence: "I write with a pencil." },
+                { en: "Book", zh: "书本", emoji: "📖", sentence: "She is reading a book." },
+                { en: "Desk", zh: "书桌", emoji: "🪑", sentence: "My desk is clean." },
+                { en: "Eraser", zh: "橡皮", emoji: "🧽", sentence: "I need an eraser." },
+                { en: "Ruler", zh: "尺子", emoji: "📏", sentence: "Use a ruler to draw a line." },
+                { en: "Bag", zh: "书包", emoji: "🎒", sentence: "My bag is heavy." }
+            ],
+            food: [
+                { en: "Apple", zh: "苹果", emoji: "🍎", sentence: "An apple a day." },
+                { en: "Bread", zh: "面包", emoji: "🍞", sentence: "I like eating bread." },
+                { en: "Milk", zh: "牛奶", emoji: "🥛", sentence: "Drink your milk." },
+                { en: "Egg", zh: "鸡蛋", emoji: "🥚", sentence: "I have an egg for breakfast." },
+                { en: "Cake", zh: "蛋糕", emoji: "🍰", sentence: "Happy birthday cake!" },
+                { en: "Juice", zh: "果汁", emoji: "🧃", sentence: "Orange juice is sweet." }
+            ],
+            body: [
+                { en: "Eye", zh: "眼睛", emoji: "👁️", sentence: "Close your eyes." },
+                { en: "Ear", zh: "耳朵", emoji: "👂", sentence: "I hear with my ears." },
+                { en: "Nose", zh: "鼻子", emoji: "👃", sentence: "Touch your nose." },
+                { en: "Hand", zh: "手", emoji: "🖐️", sentence: "Wash your hands." },
+                { en: "Foot", zh: "脚", emoji: "🦶", sentence: "My left foot." },
+                { en: "Tooth", zh: "牙齿", emoji: "🦷", sentence: "Brush your teeth." }
+            ]
+        };
+
+        let currentTheme = 'school';
+        let cards = [];
+        let flippedCards = [];
+        let matchedPairs = 0;
+        let score = 0;
+        let combo = 0;
+        let timerInterval;
+        let seconds = 0;
+        let isLocked = false;
+
+        const synth = window.speechSynthesis;
+
+        // 语音朗读
+        function speak(text) {
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = 'en-US';
+            utterance.rate = 0.9; // 稍微放慢语速适合儿童
+            synth.speak(utterance);
+        }
+
+        // 切换界面
+        function showScreen(screenId) {
+            document.querySelectorAll('body > div').forEach(div => div.classList.remove('active'));
+            document.getElementById(screenId).classList.add('active');
+            if(screenId !== 'game-screen') clearInterval(timerInterval);
+        }
+
+        function goHome() {
+            showScreen('home-screen');
+        }
+
+        // 启动游戏
+        function startGame() {
+            currentTheme = document.getElementById('theme-select').value;
+            score = 0;
+            combo = 0;
+            seconds = 0;
+            matchedPairs = 0;
+            flippedCards = [];
+            isLocked = false;
+            
+            updateStats();
+            document.getElementById('timer').innerText = "00:00";
+            document.getElementById('teaching-board').innerText = "点击卡片配对哦！";
+            
+            // 准备卡片 (每个单词生成两张一样的卡片用于消消乐)
+            const selectedWords = vocabulary[currentTheme];
+            cards = [...selectedWords, ...selectedWords];
+            cards.sort(() => Math.random() - 0.5); // 洗牌
+            
+            renderGrid();
+            showScreen('game-screen');
+            
+            timerInterval = setInterval(() => {
+                seconds++;
+                const m = Math.floor(seconds / 60).toString().padStart(2, '0');
+                const s = (seconds % 60).toString().padStart(2, '0');
+                document.getElementById('timer').innerText = `${m}:${s}`;
+            }, 1000);
+        }
+
+        // 渲染网格
+        function renderGrid() {
+            const grid = document.getElementById('game-grid');
+            grid.innerHTML = '';
+            
+            cards.forEach((wordObj, index) => {
+                const card = document.createElement('div');
+                card.classList.add('card');
+                card.dataset.index = index;
+                card.dataset.word = wordObj.en;
+                
+                card.innerHTML = `
+                    <div class="card-emoji">${wordObj.emoji}</div>
+                    <div class="card-word">${wordObj.en}</div>
+                `;
+                
+                card.addEventListener('click', () => flipCard(card, wordObj));
+                grid.appendChild(card);
+            });
+        }
+
+        // 翻卡逻辑
+        function flipCard(card, wordObj) {
+            if (isLocked || card.classList.contains('flipped') || card.classList.contains('matched')) return;
+
+            card.classList.add('flipped');
+            flippedCards.push(card);
+            
+            // 播放声音并显示教学信息
+            speak(wordObj.en);
+            document.getElementById('teaching-board').innerHTML = `
+                ${wordObj.en} (${wordObj.zh}) <br> <span style="font-size:14px; color:#555;">${wordObj.sentence}</span>
+            `;
+
+            if (flippedCards.length === 2) {
+                checkMatch();
+            }
+        }
+
+        // 检查匹配
+        function checkMatch() {
+            isLocked = true;
+            const [card1, card2] = flippedCards;
+            
+            if (card1.dataset.word === card2.dataset.word) {
+                // 成功配对
+                setTimeout(() => {
+                    card1.classList.add('matched');
+                    card2.classList.add('matched');
+                    matchedPairs++;
+                    combo++;
+                    score += 10 * combo;
+                    updateStats();
+                    showFeedback(true);
+                    
+                    if (matchedPairs === vocabulary[currentTheme].length) {
+                        setTimeout(endGame, 800);
+                    }
+                    resetBoard();
+                }, 800);
+            } else {
+                // 配对失败
+                setTimeout(() => {
+                    card1.classList.remove('flipped');
+                    card2.classList.remove('flipped');
+                    combo = 0;
+                    updateStats();
+                    showFeedback(false);
+                    resetBoard();
+                }, 1000);
+            }
+        }
+
+        function resetBoard() {
+            flippedCards = [];
+            isLocked = false;
+        }
+
+        function updateStats() {
+            document.getElementById('score').innerText = score;
+            document.getElementById('combo').innerText = combo;
+        }
+
+        // 浮动鼓励提示
+        function showFeedback(isSuccess) {
+            const feedbackEl = document.getElementById('feedback');
+            feedbackEl.classList.remove('show-feedback');
+            
+            if (isSuccess) {
+                const msgs = ["Great Job!", "Excellent!", "Awesome!", "Combo!"];
+                feedbackEl.innerText = msgs[Math.floor(Math.random() * msgs.length)];
+                feedbackEl.style.color = "#4CAF50";
+            } else {
+                feedbackEl.innerText = "Try Again! 🦌";
+                feedbackEl.style.color = "#FF9800";
+            }
+            
+            // Trigger reflow
+            void feedbackEl.offsetWidth; 
+            feedbackEl.classList.add('show-feedback');
+        }
+
+        // 游戏结束
+        function endGame() {
+            clearInterval(timerInterval);
+            document.getElementById('final-score').innerText = score;
+            
+            const list = document.getElementById('learned-words');
+            list.innerHTML = '';
+            vocabulary[currentTheme].forEach(word => {
+                const li = document.createElement('li');
+                li.innerHTML = `✅ <b>${word.en}</b> - ${word.zh}`;
+                li.style.marginBottom = "5px";
+                list.appendChild(li);
+            });
+            
+            showScreen('end-screen');
+            speak("Awesome job! You are a superstar!");
+        }
+    </script>
+</body>
+</html>
